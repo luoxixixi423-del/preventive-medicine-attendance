@@ -530,12 +530,19 @@ function showPage(id) {
 
 /* ─── 管理员登录 ────────────────────────── */
 async function doLogin() {
-  const pw = document.getElementById('pw-inp').value;
+  const pw = document.getElementById('pw-inp').value.trim();
+  if (!pw) return;
   try {
-    await api('/api/admin/data?pw=' + encodeURIComponent(pw));
+    const r = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pw })
+    });
+    const data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || 'fail');
     adminPw = pw;
     document.getElementById('pw-err').classList.remove('on');
-    await initAdminPage();
+    await initAdminPage(data);
     showPage('pg-admin');
   } catch(e) {
     document.getElementById('pw-err').classList.add('on');
@@ -543,9 +550,10 @@ async function doLogin() {
 }
 
 /* ─── 管理员初始化 ──────────────────────── */
-async function initAdminPage() {
+async function initAdminPage(preloadedData) {
   populateSelect();
-  await loadRecords();
+  if (preloadedData) renderRecords(preloadedData.sessions);
+  else await loadRecords();
   // Auto-select today's session if any
   const today = new Date().toISOString().slice(0,10);
   const todaySess = SESSIONS.find(s => s.date === today);

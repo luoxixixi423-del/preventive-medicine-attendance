@@ -15,7 +15,7 @@ const path     = require('path');
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const CONFIG = {
   port:          process.env.PORT          || 3000,
-  adminPassword: process.env.ADMIN_PW      || 'KMUST@2026',   // 管理员密码
+  adminPassword: process.env.ADMIN_PW      || 'KMUST2026',    // 管理员密码
   baseUrl:       process.env.BASE_URL      || 'http://localhost:3000', // 公网地址
   tokenSecret:   process.env.TOKEN_SECRET  || 'pmatt-secret-change-me', // Token密钥
   tokenSeconds:  5,    // 二维码每隔多少秒刷新一次（5秒）
@@ -161,13 +161,26 @@ app.post('/api/checkin', (req, res) => {
 // ── API: 管理员 ────────────────────────────────────────────
 
 function authCheck(req, res) {
-  const pw = req.query.pw || req.headers['x-admin-pw'];
+  // 支持 query string、请求头、请求体三种方式传密码
+  const pw = req.query.pw || req.headers['x-admin-pw'] || (req.body && req.body.pw) || '';
   if (pw !== CONFIG.adminPassword) {
     res.status(401).json({ error:'密码错误 / Unauthorized' });
     return false;
   }
   return true;
 }
+
+// POST 登录接口 — 密码放在 body，不出现在 URL
+app.post('/api/admin/login', (req, res) => {
+  if (!authCheck(req, res)) return;
+  const db = readDB();
+  const result = SESSIONS.map(s => ({
+    ...s,
+    attendees: (db['s'+s.id] || []).map(r => ({ name:r.name, studentId:r.studentId, time:r.time })),
+    count: (db['s'+s.id] || []).length,
+  }));
+  res.json({ ok: true, sessions: result });
+});
 
 // 获取全部签到数据
 app.get('/api/admin/data', (req, res) => {
