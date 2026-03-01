@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>预防医学签到系统</title>
+<style>
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   基础 & 变量
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+:root {
+  --bg:       #f4f6fb;
+  --white:    #ffffff;
+  --s1:       #f0f3fa;
+  --border:   #e2e8f0;
+  --border2:  #c8d3e8;
+  --text:     #1e293b;
+  --text2:    #64748b;
+  --text3:    #94a3b8;
+  --blue:     #2563eb;
+  --blue-l:   #eff6ff;
+  --blue-b:   #bfdbfe;
+  --green:    #16a34a;
+  --green-l:  #f0fdf4;
+  --green-b:  #bbf7d0;
+  --amber:    #d97706;
+  --amber-l:  #fffbeb;
+  --amber-b:  #fde68a;
+  --red:      #dc2626;
+  --red-l:    #fef2f2;
+  --red-b:    #fecaca;
+  --shadow:   0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+  --shadow2:  0 4px 12px rgba(0,0,0,.08), 0 16px 48px rgba(0,0,0,.08);
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; background:var(--bg); }
+body {
+  font-family: 'Microsoft YaHei','微软雅黑','PingFang SC','Noto Sans SC',sans-serif;
+  color:var(--text); -webkit-font-smoothing:antialiased;
+}
+
+/* ━━━━ 页面切换 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.pg { display:none; min-height:100vh; }
+.pg.on { display:block; }
+#pg-student.on, #pg-login.on { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+
+/* ━━━━ 顶栏 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.topbar {
+  background:var(--white); border-bottom:1px solid var(--border);
+  height:56px; padding:0 24px; display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:50; box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.brand { display:flex; align-items:center; gap:10px; }
+.brand-icon {
+  width:32px; height:32px; border-radius:8px;
+  background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; box-shadow:0 2px 8px rgba(37,99,235,.25);
+}
+.brand-name { font-size:14px; font-weight:700; color:var(--text); }
+.brand-sub  { font-size:10px; color:var(--text3); }
+.tabs { display:flex; gap:4px; }
+.tab {
+  padding:6px 14px; border-radius:6px; font-size:12px; font-weight:500;
+  border:none; background:transparent; color:var(--text2); cursor:pointer;
+  font-family:inherit; transition:all .15s;
+}
+.tab:hover { background:var(--s1); color:var(--text); }
+.tab.on { background:var(--blue-l); color:var(--blue); font-weight:600; }
+
+/* ━━━━ 主体容器 ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.wrap { max-width:840px; margin:0 auto; padding:28px 24px; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   管理员 — 课程选择区
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.picker-card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:14px; padding:24px 24px 20px;
+  box-shadow:var(--shadow); margin-bottom:20px;
+}
+.picker-label {
+  font-size:11px; font-weight:700; color:var(--text3);
+  text-transform:uppercase; letter-spacing:.8px; margin-bottom:10px;
+}
+.sel-wrap { position:relative; }
+.sel-wrap::after {
+  content:''; position:absolute; right:14px; top:50%; transform:translateY(-50%);
+  width:0; height:0;
+  border-left:5px solid transparent; border-right:5px solid transparent;
+  border-top:6px solid var(--text3); pointer-events:none;
+}
+select#sess-sel {
+  width:100%; padding:12px 40px 12px 14px; border-radius:8px;
+  border:1px solid var(--border2); background:var(--white); color:var(--text);
+  font-size:14px; font-family:inherit; appearance:none; cursor:pointer;
+  outline:none; transition:border-color .15s, box-shadow .15s;
+}
+select#sess-sel:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+select#sess-sel option.opt-today { font-weight:700; color:var(--green); }
+
+/* ━━━━ 二维码展示卡 ━━━━━━━━━━━━━━━━━━━━━━ */
+#qr-panel {
+  display:none;
+  background:var(--white); border:1px solid var(--border);
+  border-radius:14px; box-shadow:var(--shadow2);
+  overflow:hidden; margin-bottom:20px;
+}
+#qr-panel.show { display:flex; }
+
+.qr-left {
+  flex:1; padding:28px 28px;
+  border-right:1px solid var(--border);
+}
+.qr-sess-num {
+  font-size:10px; font-weight:700; color:var(--text3);
+  text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;
+}
+.qr-title { font-size:18px; font-weight:700; line-height:1.4; margin-bottom:6px; color:var(--text); }
+.qr-subtitle { font-size:13px; color:var(--text2); margin-bottom:18px; }
+.info-grid {
+  display:grid; grid-template-columns:auto 1fr;
+  gap:6px 12px; font-size:13px; margin-bottom:20px;
+}
+.info-k { color:var(--text3); font-size:12px; display:flex; align-items:center; gap:4px; }
+.info-v { color:var(--text); font-weight:500; }
+
+/* 签到计数 */
+.count-row {
+  display:flex; align-items:center; gap:10px;
+  padding:12px 14px; border-radius:8px;
+  background:var(--green-l); border:1px solid var(--green-b);
+}
+.count-num { font-size:26px; font-weight:800; color:var(--green); letter-spacing:-1px; }
+.count-lbl { font-size:12px; color:var(--green); }
+.count-total { font-size:12px; color:var(--text3); margin-left:auto; }
+
+/* 倒计时 */
+.token-row {
+  display:flex; align-items:center; gap:8px;
+  margin-top:14px; padding:10px 13px; border-radius:8px;
+  background:var(--amber-l); border:1px solid var(--amber-b);
+}
+.token-icon { font-size:16px; }
+.token-text { font-size:12px; color:var(--amber); flex:1; }
+.countdown { font-size:14px; font-weight:700; color:var(--amber); font-variant-numeric:tabular-nums; }
+
+.qr-right {
+  flex-shrink:0; padding:28px 28px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  min-width:240px;
+}
+.qr-box {
+  padding:14px; background:white; border-radius:12px;
+  border:2px solid var(--border); margin-bottom:12px;
+  transition:opacity .3s;
+}
+.qr-box.fading { opacity:.3; }
+.qr-box img { display:block; border-radius:6px; }
+.qr-note { font-size:11px; color:var(--text3); text-align:center; margin-bottom:12px; }
+.copy-btn {
+  padding:7px 16px; border-radius:6px; font-size:12px; font-weight:600;
+  background:var(--blue-l); border:1px solid var(--blue-b); color:var(--blue);
+  cursor:pointer; font-family:inherit; transition:all .15s;
+}
+.copy-btn:hover { background:var(--blue); color:white; }
+.copy-btn.ok { background:var(--green-l); border-color:var(--green-b); color:var(--green); }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   管理员 — 签到记录标签
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.recs-toolbar {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px;
+}
+.recs-hint { font-size:12px; color:var(--text3); }
+
+.rec-card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:10px; margin-bottom:8px; overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.rec-head {
+  display:flex; align-items:center; gap:12px;
+  padding:13px 16px; cursor:pointer; user-select:none;
+  transition:background .12s;
+}
+.rec-head:hover { background:var(--s1); }
+.rec-idx { font-size:11px; font-weight:700; color:var(--text3); width:24px; flex-shrink:0; }
+.rec-info { flex:1; min-width:0; }
+.rec-date  { font-size:13px; font-weight:600; }
+.rec-topic { font-size:11px; color:var(--text3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rec-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.rec-cnt { font-size:13px; font-weight:700; color:var(--green); }
+.rec-cnt.z { color:var(--text3); }
+.rec-exp-btn {
+  padding:4px 10px; border-radius:5px; font-size:11px; font-weight:600;
+  background:var(--blue-l); border:1px solid var(--blue-b); color:var(--blue);
+  cursor:pointer; font-family:inherit; transition:all .15s;
+}
+.rec-exp-btn:hover { background:var(--blue); color:white; }
+.rec-chev { color:var(--text3); transition:transform .2s; font-size:14px; }
+
+.rec-body {
+  display:none; border-top:1px solid var(--border);
+  padding:14px 16px;
+}
+.rec-card.open .rec-body { display:block; }
+.rec-card.open .rec-chev { transform:rotate(180deg); color:var(--blue); }
+
+.chips { display:flex; flex-wrap:wrap; gap:5px; }
+.chip {
+  font-size:11px; padding:3px 10px; border-radius:5px;
+  background:var(--blue-l); border:1px solid var(--blue-b); color:var(--blue);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   登录页
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.login-card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:16px; padding:40px 32px; max-width:340px; width:90%;
+  box-shadow:var(--shadow2); text-align:center;
+}
+.login-icon { font-size:44px; margin-bottom:16px; }
+.login-title { font-size:20px; font-weight:700; margin-bottom:6px; }
+.login-sub { font-size:13px; color:var(--text3); margin-bottom:28px; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   表单公共
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.fgroup { margin-bottom:16px; text-align:left; }
+.flabel { display:block; font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
+.finput {
+  width:100%; padding:11px 13px; border-radius:8px;
+  border:1px solid var(--border2); background:var(--white); color:var(--text);
+  font-size:15px; font-family:inherit; outline:none; -webkit-appearance:none;
+  transition:border-color .15s, box-shadow .15s;
+}
+.finput:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+.err {
+  background:var(--red-l); border:1px solid var(--red-b); border-radius:7px;
+  padding:10px 13px; margin-bottom:14px; font-size:13px; color:var(--red);
+  display:none; line-height:1.55;
+}
+.err.on { display:block; }
+
+/* ━━━━ 按钮 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.btn {
+  padding:10px 20px; border-radius:8px; border:none;
+  font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+  transition:all .15s; letter-spacing:.2px;
+}
+.btn-blue  { background:#2563eb; color:#fff; box-shadow:0 2px 8px rgba(37,99,235,.3); }
+.btn-blue:hover { background:#1d4ed8; transform:translateY(-1px); box-shadow:0 3px 14px rgba(37,99,235,.4); }
+.btn-green { background:#16a34a; color:#fff; box-shadow:0 2px 8px rgba(22,163,74,.3); }
+.btn-green:hover:not(:disabled) { background:#15803d; transform:translateY(-1px); }
+.btn-green:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.btn-ghost { background:transparent; border:1px solid var(--border2); color:var(--text2); }
+.btn-ghost:hover { background:var(--s1); color:var(--text); border-color:var(--border); }
+.btn-full { width:100%; padding:13px; font-size:15px; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   学生签到页
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#pg-student { padding:24px 16px; }
+.stu-wrap { width:100%; max-width:400px; padding-bottom:32px; }
+.stu-hdr { text-align:center; margin-bottom:26px; }
+.stu-logo {
+  width:56px; height:56px; border-radius:15px;
+  background:linear-gradient(135deg,#1e40af,#3b82f6);
+  display:flex; align-items:center; justify-content:center;
+  font-size:28px; margin:0 auto 14px;
+  box-shadow:0 4px 16px rgba(37,99,235,.3);
+}
+.stu-title { font-size:24px; font-weight:700; letter-spacing:-.3px; margin-bottom:5px; }
+.stu-sub   { font-size:12px; color:var(--text3); }
+
+.sess-info-card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:12px; padding:16px 18px; margin-bottom:18px;
+  box-shadow:var(--shadow);
+}
+.si-tag { display:inline-block; margin-bottom:8px; }
+.si-title { font-size:15px; font-weight:700; margin-bottom:10px; line-height:1.5; }
+.si-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 0; font-size:12px; color:var(--text2); }
+.si-grid span { display:flex; align-items:center; gap:4px; padding:2px 0; }
+
+/* 类型标签 */
+.tpill { font-size:10px; font-weight:700; padding:2px 9px; border-radius:5px; letter-spacing:.3px; }
+.tpill.lec  { background:var(--blue-l);  border:1px solid var(--blue-b);  color:var(--blue); }
+.tpill.prac { background:var(--amber-l); border:1px solid var(--amber-b); color:var(--amber);}
+
+.form-card { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:22px 18px; box-shadow:var(--shadow); }
+
+/* ━━━━ 成功页 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.ok-wrap { text-align:center; max-width:380px; width:100%; padding:40px 16px; }
+.ok-circle {
+  width:84px; height:84px; border-radius:50%;
+  background:var(--green-l); border:2px solid var(--green-b);
+  display:flex; align-items:center; justify-content:center;
+  font-size:40px; margin:0 auto 20px;
+  animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn { from{transform:scale(.4);opacity:0} to{transform:scale(1);opacity:1} }
+.ok-title { font-size:23px; font-weight:700; margin-bottom:6px; }
+.ok-sub   { font-size:13px; color:var(--text3); margin-bottom:24px; }
+.ok-detail {
+  background:var(--white); border:1px solid var(--border); border-radius:11px;
+  padding:16px 20px; text-align:left; box-shadow:var(--shadow); margin-bottom:16px;
+}
+.ok-dl { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.7px; margin-bottom:8px; }
+.ok-dt { font-size:14px; font-weight:700; margin-bottom:8px; }
+.ok-dd { font-size:12px; color:var(--text2); line-height:1.9; }
+
+/* ━━━━ 动画 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.fade-in { animation: fadeIn .25s ease both; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+/* ━━━━ 响应式 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media(max-width:600px){
+  .topbar { padding:0 14px; }
+  .wrap { padding:18px 14px; }
+  #qr-panel { flex-direction:column; }
+  .qr-left { border-right:none; border-bottom:1px solid var(--border); padding:20px 18px; }
+  .qr-right { padding:20px 18px; }
+  .tabs { display:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═════════════════════════════════════════
+     管理员 — 课程表页
+═════════════════════════════════════════ -->
+<div id="pg-admin" class="pg">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">🏥</div>
+      <div>
+        <div class="brand-name">预防医学签到系统</div>
+        <div class="brand-sub">KMUST · 241班 · 2025-2026学年第二学期</div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab on" id="t-qr"   onclick="switchTab('qr')">📲 展示二维码</button>
+      <button class="tab"    id="t-recs" onclick="switchTab('recs')">📊 签到记录</button>
+    </div>
+  </div>
+
+  <!-- 二维码标签 -->
+  <div class="wrap" id="tab-qr">
+    <div class="picker-card fade-in">
+      <div class="picker-label">选择课程 / Select Session</div>
+      <div class="sel-wrap">
+        <select id="sess-sel" onchange="onSelectSession()">
+          <option value="">— 请选择今天的课程 / Please select today's session —</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="qr-panel">
+      <div class="qr-left">
+        <div class="qr-sess-num" id="qr-sess-num"></div>
+        <div class="qr-title"    id="qr-title"></div>
+        <div class="qr-subtitle" id="qr-subtitle"></div>
+        <div class="info-grid"   id="qr-info-grid"></div>
+        <div class="count-row">
+          <div>
+            <div class="count-num" id="qr-count">0</div>
+            <div class="count-lbl">人已签到</div>
+          </div>
+          <div class="count-total">共 57 人</div>
+        </div>
+        <div class="token-row">
+          <div class="token-icon">🔄</div>
+          <div class="token-text">动态二维码，每 5 秒自动刷新，截图无效</div>
+          <div class="countdown" id="countdown">--:--</div>
+        </div>
+      </div>
+      <div class="qr-right">
+        <div class="qr-box" id="qr-box">
+          <img id="qr-img" src="" alt="QR" width="200" height="200">
+        </div>
+        <div class="qr-note">学生扫码后填学号即可签到</div>
+        <button class="copy-btn" id="copy-btn" onclick="copyLink()">复制签到链接</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 签到记录标签 -->
+  <div class="wrap" id="tab-recs" style="display:none">
+    <div class="recs-toolbar">
+      <div class="recs-hint">展开查看每课详情 · 点击导出按钮下载单课CSV</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="loadRecords()">🔄 刷新</button>
+        <button class="btn btn-blue"  style="font-size:12px;padding:7px 14px" onclick="exportAll()">⬇ 导出全部</button>
+      </div>
+    </div>
+    <div id="recs-list"></div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════
+     登录页
+═════════════════════════════════════════ -->
+<div id="pg-login" class="pg">
+  <div class="login-card fade-in">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">管理员登录</div>
+    <div class="login-sub">请输入管理员密码</div>
+    <div class="fgroup">
+      <label class="flabel">密码 Password</label>
+      <input class="finput" id="pw-inp" type="password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="err" id="pw-err">密码错误，请重试</div>
+    <button class="btn btn-green btn-full" onclick="doLogin()">进入管理界面</button>
+    <div style="margin-top:14px">
+      <button class="btn btn-ghost btn-full" onclick="showPage('pg-student-direct')">直接进入签到页（测试用）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════
+     学生签到页
+═════════════════════════════════════════ -->
+<div id="pg-student" class="pg">
+
+  <!-- 表单 -->
+  <div class="stu-wrap" id="form-wrap">
+    <div class="stu-hdr">
+      <div class="stu-logo">🏥</div>
+      <div class="stu-title">课堂签到</div>
+      <div class="stu-sub">昆明理工大学医学部 · 预防医学 · 241班</div>
+    </div>
+
+    <div class="sess-info-card" id="stu-scard">
+      <div class="si-tag tpill lec" id="stu-type-tag"></div>
+      <div class="si-title" id="stu-title">加载课程信息…</div>
+      <div class="si-grid" id="stu-grid"></div>
+    </div>
+
+    <div class="form-card">
+      <div class="fgroup">
+        <label class="flabel">Full Name &nbsp;姓名 *</label>
+        <input class="finput" id="inp-name" type="text" placeholder="e.g. John Smith" autocomplete="name" autocorrect="off" autocapitalize="words">
+      </div>
+      <div class="fgroup">
+        <label class="flabel">Student ID &nbsp;学号 *</label>
+        <input class="finput" id="inp-sid" type="text" placeholder="e.g. 2024241001" autocomplete="off" autocorrect="off" inputmode="text">
+      </div>
+      <div class="err" id="stu-err"></div>
+      <button class="btn btn-green btn-full" id="sub-btn" onclick="doCheckin()">
+        ✓ &nbsp;确认签到 &nbsp;/&nbsp; Sign In
+      </button>
+    </div>
+    <div style="text-align:center;margin-top:14px;font-size:11px;color:var(--text3)">
+      昆明理工大学医学部 · KMUST Faculty of Medicine
+    </div>
+  </div>
+
+  <!-- 成功 -->
+  <div class="ok-wrap" id="ok-wrap" style="display:none">
+    <div class="ok-circle">✓</div>
+    <div class="ok-title">签到成功！</div>
+    <div class="ok-sub">Sign-In Successful · 出勤已记录</div>
+    <div class="ok-detail">
+      <div class="ok-dl">本次课程信息</div>
+      <div class="ok-dt" id="ok-topic"></div>
+      <div class="ok-dd" id="ok-meta"></div>
+    </div>
+    <div style="font-size:11px;color:var(--text3)">可以关闭此页面 · You may close this page</div>
+  </div>
+
+</div>
+
+<!-- ═════════════════════════════════════════
+     JAVASCRIPT
+═════════════════════════════════════════ -->
+<script>
+/* ─── 状态 ──────────────────────────────── */
+let SESSIONS      = [];
+let TOKEN_SECONDS = 5;
+let adminPw       = '';
+let curAdminSid   = null;
+let qrRefreshTimer = null;
+let countdownTimer = null;
+let pollTimer      = null;
+let curStudentSid  = null;
+let curToken       = '';
+
+/* ─── 设备 ID (WeChat 每台设备唯一) ─────── */
+function getDeviceId() {
+  let did = localStorage.getItem('_pm_did');
+  if (!did) {
+    did = 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('_pm_did', did);
+  }
+  return did;
+}
+
+/* ─── 路由 ──────────────────────────────── */
+(async function boot() {
+  try {
+    const cfg = await api('/api/config');
+    SESSIONS      = cfg.sessions;
+    TOKEN_SECONDS = cfg.tokenSeconds || 5;
+  } catch(e) { console.error('config load failed', e); }
+
+  const p   = new URLSearchParams(window.location.search);
+  const sid = parseInt(p.get('s'));
+  const tok = p.get('t') || '';
+
+  if (sid && tok && SESSIONS.find(s => s.id === sid)) {
+    // 学生扫码进入
+    curStudentSid = sid;
+    curToken      = tok;
+    showPage('pg-student');
+    initStudentPage(sid);
+  } else {
+    // 管理员入口
+    showPage('pg-login');
+  }
+})();
+
+function showPage(id) {
+  ['pg-admin','pg-login','pg-student'].forEach(p => {
+    document.getElementById(p).classList.toggle('on', p === id);
+  });
+}
+
+/* ─── 管理员登录 ────────────────────────── */
+async function doLogin() {
+  const pw = document.getElementById('pw-inp').value;
+  try {
+    await api('/api/admin/data?pw=' + encodeURIComponent(pw));
+    adminPw = pw;
+    document.getElementById('pw-err').classList.remove('on');
+    await initAdminPage();
+    showPage('pg-admin');
+  } catch(e) {
+    document.getElementById('pw-err').classList.add('on');
+  }
+}
+
+/* ─── 管理员初始化 ──────────────────────── */
+async function initAdminPage() {
+  populateSelect();
+  await loadRecords();
+  // Auto-select today's session if any
+  const today = new Date().toISOString().slice(0,10);
+  const todaySess = SESSIONS.find(s => s.date === today);
+  if (todaySess) {
+    document.getElementById('sess-sel').value = todaySess.id;
+    onSelectSession();
+  }
+}
+
+function populateSelect() {
+  const sel   = document.getElementById('sess-sel');
+  const today = new Date().toISOString().slice(0,10);
+  let curMonth = '';
+
+  // Group by month
+  SESSIONS.forEach((s, i) => {
+    const m = s.date.slice(0,7); // YYYY-MM
+    if (m !== curMonth) {
+      const og = document.createElement('optgroup');
+      const [y, mo] = m.split('-');
+      og.label = `${y}年${parseInt(mo)}月`;
+      sel.appendChild(og);
+      curMonth = m;
+    }
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    const isToday = s.date === today;
+    const dateLabel = s.date.replace(/-/g, '.').slice(5); // MM.DD
+    opt.textContent = `${isToday?'▶ ':''}${s.date.slice(5).replace('-','.')} ${s.wd}  ${s.zh}  (${s.teacher})`;
+    if (isToday) opt.className = 'opt-today';
+    sel.lastElementChild.appendChild(opt);
+  });
+}
+
+/* ─── 选择课程 → 显示二维码 ─────────────── */
+async function onSelectSession() {
+  const sid = parseInt(document.getElementById('sess-sel').value);
+  if (!sid) { document.getElementById('qr-panel').classList.remove('show'); return; }
+
+  // Clear old timers
+  clearInterval(qrRefreshTimer);
+  clearInterval(countdownTimer);
+  clearInterval(pollTimer);
+
+  curAdminSid = sid;
+  const s = SESSIONS.find(x => x.id === sid);
+  const i = SESSIONS.indexOf(s);
+
+  // Fill static info
+  document.getElementById('qr-sess-num').textContent = `第 ${i+1} 课 / Session ${i+1} of 28`;
+  document.getElementById('qr-title').textContent    = s.zh;
+  document.getElementById('qr-subtitle').textContent = s.en;
+  document.getElementById('qr-info-grid').innerHTML  = `
+    <span class="info-k">📅 日期</span><span class="info-v">${s.date} (${s.wd})</span>
+    <span class="info-k">⏰ 时间</span><span class="info-v">${s.time} – ${s.end}</span>
+    <span class="info-k">👤 教师</span><span class="info-v">${s.teacher}</span>
+    <span class="info-k">📚 类型</span><span class="info-v">${s.type==='Practicum'?'见习课':'理论课'} · ${s.h} 学时</span>
+  `;
+
+  document.getElementById('qr-panel').classList.add('show');
+  await refreshQR();
+
+  // 每次 token 过期时重新生成二维码（毫秒）
+  qrRefreshTimer = setInterval(refreshQR, TOKEN_SECONDS * 1000);
+
+  // 实时倒计时
+  runCountdown();
+  countdownTimer = setInterval(runCountdown, 1000);
+
+  // 每10秒轮询签到人数
+  pollCount();
+  pollTimer = setInterval(pollCount, 10000);
+}
+
+async function refreshQR() {
+  if (!curAdminSid) return;
+  const box = document.getElementById('qr-box');
+  box.classList.add('fading');
+  try {
+    const data = await api('/api/token/' + curAdminSid + '?pw=' + encodeURIComponent(adminPw));
+    const qr   = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.url)}&bgcolor=ffffff&color=1e293b&margin=10`;
+    document.getElementById('qr-img').src = qr;
+    document.getElementById('copy-btn').dataset.url = data.url;
+    // Reset countdown reference
+    window._qrNextRefresh = Date.now() + data.nextRefreshMs;
+  } catch(e) { console.error('QR refresh failed', e); }
+  setTimeout(() => box.classList.remove('fading'), 200);
+}
+
+function runCountdown() {
+  if (!window._qrNextRefresh) return;
+  const ms  = Math.max(0, window._qrNextRefresh - Date.now());
+  const sec = Math.ceil(ms / 1000);
+  const el  = document.getElementById('countdown');
+  if (el) el.textContent = sec + ' 秒后刷新';
+}
+
+async function pollCount() {
+  if (!curAdminSid) return;
+  try {
+    const d = await api('/api/session/' + curAdminSid);
+    document.getElementById('qr-count').textContent = d.count;
+  } catch(e) {}
+}
+
+function copyLink() {
+  const url = document.getElementById('copy-btn').dataset.url || '';
+  const btn = document.getElementById('copy-btn');
+  navigator.clipboard.writeText(url).then(() => {
+    btn.textContent = '✓ 已复制'; btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = '复制签到链接'; btn.classList.remove('ok'); }, 2000);
+  }).catch(() => prompt('请复制此链接：', url));
+}
+
+/* ─── 标签切换 ──────────────────────────── */
+function switchTab(t) {
+  document.getElementById('tab-qr').style.display   = t==='qr'  ?'block':'none';
+  document.getElementById('tab-recs').style.display = t==='recs'?'block':'none';
+  document.getElementById('t-qr').className   = 'tab' + (t==='qr'  ?' on':'');
+  document.getElementById('t-recs').className = 'tab' + (t==='recs'?' on':'');
+  if (t==='recs') loadRecords();
+}
+
+/* ─── 签到记录 ──────────────────────────── */
+async function loadRecords() {
+  if (!adminPw) return;
+  try {
+    const data = await api('/api/admin/data?pw=' + encodeURIComponent(adminPw));
+    renderRecords(data.sessions);
+  } catch(e) { console.error('load records failed', e); }
+}
+
+function renderRecords(sessions) {
+  const list = document.getElementById('recs-list');
+  list.innerHTML = '';
+  sessions.forEach((s, i) => {
+    const at  = s.attendees || [];
+    const div = document.createElement('div');
+    div.className = 'rec-card fade-in';
+    div.style.animationDelay = (i * 0.015) + 's';
+    div.innerHTML = `
+      <div class="rec-head" onclick="toggleRec(this)">
+        <div class="rec-idx">S${i+1}</div>
+        <div class="rec-info">
+          <div class="rec-date">${s.date} ${s.wd} &nbsp; ${s.time}–${s.end}</div>
+          <div class="rec-topic">${s.zh} · ${s.teacher}</div>
+        </div>
+        <div class="rec-right">
+          <div class="rec-cnt ${at.length===0?'z':''}">${at.length} / 57</div>
+          <button class="rec-exp-btn" onclick="event.stopPropagation();exportOne(${s.id},'${s.date}','${s.teacher}')">⬇ CSV</button>
+          <span class="rec-chev">▾</span>
+        </div>
+      </div>
+      <div class="rec-body">
+        ${at.length === 0
+          ? '<span style="font-size:13px;color:var(--text3)">暂无签到记录</span>'
+          : `<div class="chips">${at.map(a=>`<span class="chip" title="${a.time}">${a.name}（${a.studentId}）</span>`).join('')}</div>`
+        }
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function toggleRec(head) {
+  head.parentElement.classList.toggle('open');
+}
+
+function exportOne(id, date, teacher) {
+  window.open(`/api/admin/export/${id}?pw=${encodeURIComponent(adminPw)}`);
+}
+
+function exportAll() {
+  window.open(`/api/admin/export-all?pw=${encodeURIComponent(adminPw)}`);
+}
+
+/* ─── 学生签到页 ────────────────────────── */
+async function initStudentPage(sid) {
+  try {
+    const data = await api('/api/session/' + sid);
+    const s    = data.session;
+
+    const tag  = document.getElementById('stu-type-tag');
+    tag.textContent = s.type==='Practicum'?'见习课':'理论课';
+    tag.className   = 'si-tag tpill ' + (s.type==='Practicum'?'prac':'lec');
+
+    document.getElementById('stu-title').textContent = s.en;
+    document.getElementById('stu-grid').innerHTML    = `
+      <span>📅 ${s.date} ${s.wd}</span>
+      <span>⏰ ${s.time} – ${s.end}</span>
+      <span>👤 ${s.teacher}</span>
+      <span>⌛ ${s.h} 学时</span>
+    `;
+
+    // 检查同一设备是否已签到
+    const did = getDeviceId();
+    if (localStorage.getItem('_pm_signed_' + sid) === did) {
+      showSuccess(s, localStorage.getItem('_pm_name_' + sid) || '');
+    }
+  } catch(e) {
+    document.getElementById('stu-title').textContent = '课程信息加载失败，请重新扫码';
+    document.getElementById('sub-btn').disabled = true;
+  }
+}
+
+function showStuErr(msg) {
+  const el = document.getElementById('stu-err');
+  el.textContent = msg;
+  el.classList.add('on');
+  setTimeout(() => el.classList.remove('on'), 7000);
+}
+
+async function doCheckin() {
+  const name = document.getElementById('inp-name').value.trim();
+  const sid  = document.getElementById('inp-sid').value.trim();
+  if (!name) { showStuErr('请填写您的姓名 / Please enter your full name'); return; }
+  if (!sid)  { showStuErr('请填写学号 / Please enter your Student ID'); return; }
+
+  const btn = document.getElementById('sub-btn');
+  btn.disabled = true;
+  btn.textContent = '提交中… / Submitting…';
+
+  try {
+    const data = await api('/api/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: curStudentSid,
+        token: curToken,
+        name, studentId: sid,
+        deviceId: getDeviceId(),
+      })
+    });
+
+    const s = data.session;
+    localStorage.setItem('_pm_signed_' + curStudentSid, getDeviceId());
+    localStorage.setItem('_pm_name_'   + curStudentSid, name);
+    showSuccess(s, name);
+
+  } catch(e) {
+    showStuErr(e.error || '签到失败，请重试 / Sign-in failed, please retry');
+    btn.disabled = false;
+    btn.textContent = '✓ 确认签到 / Sign In';
+  }
+}
+
+function showSuccess(s, name) {
+  document.getElementById('form-wrap').style.display = 'none';
+  document.getElementById('ok-wrap').style.display   = 'flex';
+  document.getElementById('ok-wrap').style.flexDirection = 'column';
+  document.getElementById('ok-wrap').style.alignItems = 'center';
+  document.getElementById('ok-topic').textContent = s.en;
+  document.getElementById('ok-meta').innerHTML    =
+    `📅 ${s.date} (${s.wd})<br>⏰ ${s.time} – ${s.end}<br>👤 ${s.teacher}`;
+}
+
+/* ─── API helper ────────────────────────── */
+async function api(url, opts={}) {
+  const r = await fetch(url, opts);
+  const d = await r.json();
+  if (!r.ok) throw d;
+  return d;
+}
+
+/* ─── 键盘 ──────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('pg-login').classList.contains('on')) doLogin();
+  if (document.getElementById('pg-student').classList.contains('on')) doCheckin();
+});
+</script>
+</body>
+</html>
